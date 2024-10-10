@@ -164,7 +164,7 @@ Preloaded example dialogues can be placed in `preloads/example_dialogue.json`. E
 ### A Note re: NSFW
 HonestoJago here - Mancer is an extremely cool company and their LLMs are NOT censored, so please be aware of that. If you intend to make a bot that is NSFW, remember to create an 18+ Discord channel and abide by all relevant TOS.
 
-If you just want to create fun, interesting SFW bots, just prompt carefully and supervise the bot to make sure people in your server don't break through your censors. I'll add more about this later. 
+If you just want to create fun, interesting SFW bots, prompt carefully and supervise the bot to make sure people in your server don't break through your censors. I'll add more about this later. 
 
 ## Future Plans
 
