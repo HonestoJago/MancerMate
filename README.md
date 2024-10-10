@@ -128,7 +128,7 @@ MancerMate offers both traditional prefix-based commands and modern slash comman
 #### Prefix Commands
 - `!continue` – Traditional prefix command to continue the last response.
 
-### Interacting with MancerMate
+### Interacting with MancerMate (or Whatever you Decide to Name your Bot)
 - **Start a Conversation:** Mention @MancerMate in a message or reply to a message to begin interacting.
 - **Direct Messages:** Send a DM to MancerMate for private conversations.
 
