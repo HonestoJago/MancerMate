@@ -176,6 +176,7 @@ We're continuously working to improve MancerMate! Here are some of our upcoming 
 - **Feature Expansion:** Adding more commands and integrations based on your feedback.
 - **Rich Responses:** Utilizing Discord's embed features for more engaging replies.
 - **Multi-language Support:** Allowing MancerMate to communicate in various languages to cater to a diverse community.
+- - **Rich Responses:** Dealing with context issues when models change mid-session.
 
 ## Contributing
 
