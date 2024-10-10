@@ -21,7 +21,7 @@
 
 - **Python 3.8+**: Ensure you have Python installed. You can download it from [python.org](https://www.python.org/downloads/).
 - **Discord Account**: To invite and use the bot in your server.
-- **Mancer AI API Key**: Obtain your API key from Mancer AI.
+- **Mancer AI API Key**: Obtain your API key from Mancer AI. https://mancer.tech/
 
 ### Steps
 
