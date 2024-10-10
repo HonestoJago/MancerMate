@@ -100,7 +100,7 @@
 6. **Run the Bot**
 
    ```bash
-   python main.py
+   python bot.py
    ```
 
    Upon successful launch, you should see:
