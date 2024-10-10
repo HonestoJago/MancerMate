@@ -18,15 +18,15 @@
 ## Personal Note
 
 I'm not even going to try to hide the GPTisms and Claudian nonsense in this README, but I want a place to say a few things directly (will update as time permits).
-This bot is currently set up for Mancer's Magnum72b and Goliath120b models, but I'll add more (or you can) by editing AVAILABLE_MODELS in bot.py, and make sure to include the max token context.
-I included some of the textgen settings I like as JSON files, but if you switch models mid conversation you can run into token issues (counting tokens better is on the list of things to do). 
-To set the system prompt, you have to edit ai_personality in example_dialogue.JSON (preloads folder). If you don't want to use example dialogue, just set load_example_dialogue to false in that same JSON (it will still read the system prompt).
-When trimming conversation history as the token limit approaches, the system prompt and the example dialogue stay in context and oldest messages are removed first. There are certainly better ways to handle this, and that's also on the list of things to do.
-The bot keeps track of user conversations individually and logs them in JSON files. Sometimes, people will reply to the bot's response to someone else and they wonder why the bot is ignoring what it just said, but it's because that other person's conversation is stored separately (it will still respond, but won't have its response to the other user in that conversation history). It's currently done in memory but maybe a database might be better.
-You can change textgen settings while the bot is running with the /load_params command. Also, if the bot gets stuck in a loop or otherwise is spiraling out of control you can /clear_history (it only clears the conversation history of the user who made the command). 
-I have another version that responds to trigger words and specific users (optionally) and will add that to this. 
-Remember to give the bot all the permissions it needs to read messages and see channels.
-For general Discord bot management, I think it's easier to pre-define which channels each bot can receive commands and send messages in, so that's why ALLOWED_CHANNEL_IDS exists. 
+- This bot is currently set up for Mancer's Magnum72b and Goliath120b models, but I'll add more (or you can) by editing AVAILABLE_MODELS in bot.py, and make sure to include the max token context.
+- I included some of the textgen settings I like as JSON files, but if you switch models mid conversation you can run into token issues (counting tokens better is on the list of things to do). 
+- To set the system prompt, you have to edit ai_personality in example_dialogue.JSON (preloads folder). If you don't want to use example dialogue, just set load_example_dialogue to false in that same JSON (it will still read the system prompt).
+- When trimming conversation history as the token limit approaches, the system prompt and the example dialogue stay in context and oldest messages are removed first. There are certainly better ways to handle this, and that's also on the list of things to do.
+- The bot keeps track of user conversations individually and logs them in JSON files. Sometimes, people will reply to the bot's response to someone else and they wonder why the bot is ignoring what it just said, but it's because that other person's conversation is stored separately (it will still respond, but won't have its response to the other user in that conversation history). It's currently done in memory but maybe a database might be better.
+- You can change textgen settings while the bot is running with the /load_params command. Also, if the bot gets stuck in a loop or otherwise is spiraling out of control you can /clear_history (it only clears the conversation history of the user who made the command). 
+- I have another version that responds to trigger words and specific users (optionally) and will add that to this. 
+- Remember to give the bot all the permissions it needs to read messages and see channels etc...
+- For general Discord bot management, I think it's easier to pre-define which channels each bot can receive commands and send messages in, so that's why ALLOWED_CHANNEL_IDS exists. 
 Please reach out with any comments or ideas for more functions/features. 
 
 ## Installation
