@@ -138,20 +138,30 @@ MancerMate offers both traditional prefix-based commands and modern slash comman
 
 ## Configuration
 
+## Configuration
+
 ### Environment Variables
+
 The bot uses environment variables to manage sensitive information and configurations. Refer to `.env.example` for the required variables.
 
-- `API_KEY`: Your Mancer AI API key.
-- `DISCORD_TOKEN`: Your Discord bot token.
-- `ALLOWED_CHANNEL_IDS`: Comma-separated list of Discord channel IDs where the bot is allowed to operate.
+- **API_KEY**: Your Mancer AI API key.
+- **DISCORD_TOKEN**: Your Discord bot token.
+- **ALLOWED_CHANNEL_IDS**: Comma-separated list of Discord channel IDs where the bot is allowed to operate.
 
 ### AI Parameters
+
 AI behavior can be customized via JSON files in the `textgen` directory. Admins can load these parameters using the `/load_params` command.
 
-### Example Dialogue
-Preloaded example dialogues can be placed in `preloads/example_dialogue.json`. Enable loading them by setting `load_example_dialogue` to `True` in the configuration.
+#### System Prompt
 
-Note: The bot automatically creates the `textgen`, `preloads`, and `chat_logs` directories if they don't already exist, so you don't need to manually create them.
+The system prompt must be set within the JSON configuration file. This prompt guides the AI's responses and ensures coherent interactions.
+You set the prompt by defining ai_personality. 
+
+### Example Dialogue
+
+Preloaded example dialogues can be placed in `preloads/example_dialogue.json`. Enable loading them by setting `load_example_dialogue` to true in the configuration. **Note:** The system prompt will still load even if `load_example_dialogue` is set to false.
+
+**Note:** The bot automatically creates the `textgen`, `preloads`, and `chat_logs` directories if they don't already exist, so you don't need to manually create them.
 
 ### A Note re: NSFW
 HonestoJago here - Mancer is an extremely cool company and their LLMs are NOT censored, so please be aware of that. If you intend to make a bot that is NSFW, remember to create an 18+ Discord channel and abide by all relevant TOS.
