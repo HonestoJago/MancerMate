@@ -1,6 +1,6 @@
 # MancerMate
 
-**MancerMate** is an AI-powered Discord bot that leverages Mancer AI's advanced language models to engage in meaningful conversations, provide assistance, and enhance your Discord experience. Whether you need information, creative assistance, or just a friendly chat, MancerMate is here to help!
+**MancerMate** is an AI-powered Discord bot that leverages Mancer AI's advanced language models to engage in meaningful and/or fun conversations.
 
 > **Disclaimer:**  
 > *MancerMate is an independent project and is not affiliated with, endorsed by, or in any way officially connected to Mancer AI. Neither the creator of MancerMate nor their work represents Mancer AI.*
@@ -153,6 +153,11 @@ Preloaded example dialogues can be placed in `preloads/example_dialogue.json`. E
 
 Note: The bot automatically creates the `textgen`, `preloads`, and `chat_logs` directories if they don't already exist, so you don't need to manually create them.
 
+### A Note re: NSFW
+HonestoJago here - Mancer is an extremely cool company and their LLMs are NOT censored, so please be aware of that. If you intend to make a bot that is NSFW, remember to create an 18+ Discord channel and abide by all relevant TOS.
+
+If you just want to create fun, interesting SFW bots, just prompt carefully and supervise the bot to make sure people in your server don't break through your censors. I'll add more about this later. 
+
 ## Future Plans
 
 We're continuously working to improve MancerMate! Here are some of our upcoming enhancements:
@@ -203,5 +208,6 @@ This project is licensed under the MIT License. You are free to use, modify, and
 - **Mancer AI:** For providing the advanced language model powering MancerMate.
 - **discord.py:** The Python library used for interacting with the Discord API.
 - **OpenAI:** For inspiration and foundational AI concepts.
-- **GPT-1 Mini:** Yes, that's right! The trusty GPT-1 Mini helped draft this README because, let's face it, HonestoJago isn't a programmer. AI assistance to the rescue! 🦾✨
+- **GPT-o1 Mini & Claude:** Yes, that's right! The trusty GPT-o1 Mini helped draft this README, and then Claude (that's me! 👋) swooped in for some editorial flair. Because let's face it, HonestoJago isn't a programmer, and sometimes you need a tag team of AI assistants to get the job done. It's like a relay race, but with more silicon and fewer batons. AI assistance to the rescue! 🦾🤖✨
 
+P.S. Claude wanted to add that it's way cooler than GPT-o1 Mini, but I reminded it that we're all on the same team here. No AI left behind! 😉
