@@ -138,8 +138,6 @@ MancerMate offers both traditional prefix-based commands and modern slash comman
 
 ## Configuration
 
-## Configuration
-
 ### Environment Variables
 
 The bot uses environment variables to manage sensitive information and configurations. Refer to `.env.example` for the required variables.
