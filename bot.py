@@ -458,32 +458,13 @@ async def slash_help(interaction: discord.Interaction):
 
     logger.info("Displayed help message.", extra={'user_id': interaction.user.id, 'command': 'help'})
 
-@bot.command(name='continue')
-async def continue_response(ctx):
-    if not is_allowed_channel(ctx.channel.id) and not isinstance(ctx.channel, discord.DMChannel):
-        await ctx.send("This command can only be used in the designated channels.")
-        return
-
-    user_id = ctx.author.id
-    if user_id in last_responses:
-        full_response = last_responses[user_id]
-        async with ctx.typing():
-            continuation_prompt = f"Please continue: '{full_response}'"
-            continuation = await chat_with_model(user_id, continuation_prompt, username=ctx.author.name)
-            await ctx.send(truncate_response(continuation))
-
-        logger.info("Continued last response.", extra={'user_id': user_id, 'command': 'continue'})
-    else:
-        await ctx.send("There's no previous response to continue.")
-
 @bot.tree.command(name="continue", description="Continue the last response")
 @is_in_allowed_channel()
 async def slash_continue(interaction: discord.Interaction):
     user_id = interaction.user.id
     if user_id in last_responses:
-        full_response = last_responses[user_id]
         await interaction.response.defer()
-        continuation_prompt = f"Please continue: '{full_response}'"
+        continuation_prompt = "Please continue from where you left off, but finish quickly."
         continuation = await chat_with_model(user_id, continuation_prompt, username=interaction.user.name)
         await interaction.followup.send(truncate_response(continuation))
 
