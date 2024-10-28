@@ -22,46 +22,39 @@ class ReRollButton(Button):
         conversation_manager = interaction.client.conversation_manager
         user_id = self.user_id
 
+        # Get the original message and response message ID
+        original_message = conversation_manager.get_original_message(user_id)
+        response_message_id = conversation_manager.get_response_message_id(user_id)
+
         # Remove reroll limit check and counter
         conversation_manager.increment_reroll(user_id)  # Keep this just for logging purposes
 
         await interaction.response.defer()
 
-        # Retrieve the original message
-        original_message = conversation_manager.get_original_message(user_id)
-        if not original_message:
-            await interaction.followup.send("Original message not found.", ephemeral=True)
-            return
-
-        # Retrieve the AI response message ID
-        response_message_id = conversation_manager.get_response_message_id(user_id)
-        if not response_message_id:
-            await interaction.followup.send("Original AI response not found.", ephemeral=True)
-            return
-
-        # Fetch the original AI message
+        # Get the channel from the interaction
         channel = interaction.channel
+
+        # Fetch the message to be deleted
         try:
             ai_message = await channel.fetch_message(response_message_id)
         except discord.NotFound:
             await interaction.followup.send("Original AI response message not found or has been deleted.", ephemeral=True)
             return
         except discord.Forbidden:
-            await interaction.followup.send("I don't have permission to delete the original AI response.", ephemeral=True)
-            return
-        except discord.HTTPException:
-            await interaction.followup.send("Failed to fetch the original AI response message.", ephemeral=True)
+            await interaction.followup.send("I don't have permission to fetch the original AI response.", ephemeral=True)
             return
 
-        # Generate a new response using the original message
-        ai_client = interaction.client.ai_client
-        new_response = await ai_client.chat_with_model(
-            user_id,
-            original_message,
-            conversation_manager,
-            username=interaction.user.name,
-            reroll=True  # Indicate that this is a reroll
-        )
+        # Add typing indicator
+        async with channel.typing():
+            # Generate a new response using the original message
+            ai_client = interaction.client.ai_client
+            new_response = await ai_client.chat_with_model(
+                user_id,
+                original_message,
+                conversation_manager,
+                username=interaction.user.name,
+                reroll=True
+            )
 
         if isinstance(new_response, str):
             # Truncate if necessary
@@ -105,7 +98,8 @@ class ReRollButton(Button):
 
 class ContinueButton(Button):
     def __init__(self, user_id):
-        super().__init__(label="Continue", style=discord.ButtonStyle.secondary)
+        # Change secondary to success for green color
+        super().__init__(label="Continue", style=discord.ButtonStyle.success)
         self.user_id = user_id
 
     async def callback(self, interaction: discord.Interaction):
@@ -123,29 +117,31 @@ class ContinueButton(Button):
             await interaction.followup.send("There's no previous response to continue from.", ephemeral=True)
             return
 
-        # Generate continuation
-        continuation = await interaction.client.ai_client.chat_with_model(
-            self.user_id,
-            "Please continue from where you left off, but finish quickly.",
-            conversation_manager,
-            username=interaction.user.name
-        )
+        # Add typing indicator
+        async with interaction.channel.typing():
+            # Generate continuation
+            continuation = await interaction.client.ai_client.chat_with_model(
+                self.user_id,
+                "Please continue from where you left off, but finish quickly.",
+                conversation_manager,
+                username=interaction.user.name
+            )
 
-        if isinstance(continuation, str):
-            # Create view with both buttons
-            view = View()
-            view.add_item(ReRollButton(user_id=self.user_id))
-            view.add_item(ContinueButton(user_id=self.user_id))
-            view.add_item(ClearHistoryButton(user_id=self.user_id))
-            
-            # Update conversation history with the continuation
-            conversation_manager.update_last_response(self.user_id, last_response + "\n\n" + continuation)
-            
-            await interaction.followup.send(continuation, view=view)
-            logger.info("Continued response via button.", 
-                       extra={'user_id': self.user_id, 'command': 'continue_button'})
-        else:
-            await interaction.followup.send(continuation, ephemeral=True)
+            if isinstance(continuation, str):
+                # Create view with buttons
+                view = View()
+                view.add_item(ReRollButton(user_id=self.user_id))
+                view.add_item(ContinueButton(user_id=self.user_id))
+                view.add_item(ClearHistoryButton(user_id=self.user_id))
+                
+                # Update conversation history with the continuation
+                conversation_manager.update_last_response(self.user_id, last_response + "\n\n" + continuation)
+                
+                await interaction.followup.send(continuation, view=view)
+                logger.info("Continued response via button.", 
+                           extra={'user_id': self.user_id, 'command': 'continue_button'})
+            else:
+                await interaction.followup.send(continuation, ephemeral=True)
 
 class ClearHistoryButton(Button):
     def __init__(self, user_id):
