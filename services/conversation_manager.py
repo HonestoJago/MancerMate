@@ -1,3 +1,5 @@
+# services/conversation_manager.py
+
 import json
 import os
 import re
@@ -11,15 +13,17 @@ class ConversationManager:
     def __init__(self):
         self.conversations = defaultdict(list)
         self.last_responses = {}
-        self.conversation_counters = defaultdict(int)
-        self.new_conversation_started = defaultdict(lambda: True)
-        self.new_conversation_needed = defaultdict(bool)
-        
+        self.original_messages = {}
+        self.response_message_ids = {}
+        self.reroll_counters = defaultdict(int)
+        self.reroll_parameters = defaultdict(dict)  # To store parameter states prior to reroll
+        self.new_conversation_needed = defaultdict(bool)  # Add this line
+
         # Load dialogue configuration
         self.config, self.ai_personality, self.example_dialogue = self.load_dialogue_from_json()
-        
+
         # Get current model's context limit
-        self.current_token_limit = AVAILABLE_MODELS[DEFAULT_AI_PARAMS["model"]]
+        self.current_token_limit = AVAILABLE_MODELS.get(DEFAULT_AI_PARAMS.get("model", "magnum-72b"), 16384)
 
     def load_dialogue_from_json(self, file_name='example_dialogue.json'):
         file_path = os.path.join(PRELOADS_DIR, file_name)
@@ -63,6 +67,47 @@ class ConversationManager:
     def get_last_response(self, user_id):
         return self.last_responses.get(user_id)
 
+    def save_original_message(self, user_id, message):
+        self.original_messages[user_id] = message
+
+    def get_original_message(self, user_id):
+        return self.original_messages.get(user_id, "")
+
+    def save_response_message_id(self, user_id, message_id):
+        self.response_message_ids[user_id] = message_id
+
+    def get_response_message_id(self, user_id):
+        return self.response_message_ids.get(user_id)
+
+    def increment_reroll(self, user_id):
+        self.reroll_counters[user_id] += 1
+
+    def get_reroll_count(self, user_id):
+        return self.reroll_counters[user_id]
+
+    def reset_reroll_count(self, user_id):
+        self.reroll_counters[user_id] = 0
+
+    def save_reroll_parameters(self, user_id, parameters):
+        self.reroll_parameters[user_id] = parameters
+
+    def get_reroll_parameters(self, user_id):
+        return self.reroll_parameters.get(user_id, {})
+
+    def reset_reroll_parameters(self, user_id):
+        if user_id in self.reroll_parameters:
+            original_params = self.reroll_parameters[user_id]
+            for param, value in original_params.items():
+                if param in DEFAULT_AI_PARAMS:
+                    DEFAULT_AI_PARAMS[param] = value  # Assuming DEFAULT_AI_PARAMS is mutable
+            del self.reroll_parameters[user_id]
+
+    def update_last_response(self, user_id, new_response):
+        if self.conversations[user_id] and self.conversations[user_id][-1]['role'] == 'assistant':
+            self.conversations[user_id][-1]['content'] = new_response
+        else:
+            self.conversations[user_id].append({"role": "assistant", "content": new_response})
+
     @staticmethod
     def estimate_tokens(message: str) -> int:
         return len(message) // 4  # Rough estimation
@@ -75,7 +120,8 @@ class ConversationManager:
         preloaded_length = len(self.example_dialogue) + 1 if self.should_load_example_dialogue() else 1
 
         while total_tokens > self.current_token_limit and len(history) > preloaded_length:
-            total_tokens -= self.estimate_tokens(history.pop(preloaded_length)["content"])
+            removed_msg = history.pop(preloaded_length)
+            total_tokens -= self.estimate_tokens(removed_msg["content"])
 
     def get_next_log_number(self, user_id: int) -> int:
         pattern = re.compile(f"{user_id}_(\\d+)\\.json")
@@ -102,3 +148,13 @@ class ConversationManager:
     def clear_history(self, user_id):
         self.conversations[user_id] = []
         self.new_conversation_needed[user_id] = True
+        if user_id in self.last_responses:
+            del self.last_responses[user_id]
+        if user_id in self.original_messages:
+            del self.original_messages[user_id]
+        if user_id in self.response_message_ids:
+            del self.response_message_ids[user_id]
+        if user_id in self.reroll_counters:
+            del self.reroll_counters[user_id]
+        if user_id in self.reroll_parameters:
+            del self.reroll_parameters[user_id]

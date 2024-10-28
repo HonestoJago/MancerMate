@@ -1,8 +1,11 @@
+# cogs/commands.py
+
 import json
 import os
 import discord
 from discord import app_commands
 from discord.ext import commands
+from discord.ui import Button, View
 import logging
 from config.settings import TEXTGEN_DIR, DEFAULT_AI_PARAMS, AVAILABLE_MODELS
 
@@ -115,11 +118,17 @@ class BotCommands(commands.Cog):
                 username=interaction.user.name
             )
             
-            # Truncate response if needed
-            if len(continuation) > 1900:
-                continuation = continuation[:1900] + "..."
+            if isinstance(continuation, str):
+                # Truncate response if needed
+                if len(continuation) > 1900:
+                    continuation = continuation[:1900] + "..."
                 
-            await interaction.followup.send(continuation)
-            logger.info("Continued last response.", extra={'user_id': user_id, 'command': 'continue'})
+                await interaction.followup.send(continuation)
+                logger.info("Continued last response.", extra={'user_id': user_id, 'command': 'continue'})
+            else:
+                # If continuation is not a string, it's likely an error message
+                await interaction.followup.send(continuation, ephemeral=True)
         else:
-            await interaction.response.send_message("There's no previous response to continue.", ephemeral=True)
+            await interaction.response.send_message("There's no previous response to continue from.", ephemeral=True)
+
+

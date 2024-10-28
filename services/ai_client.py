@@ -1,3 +1,5 @@
+# services/ai_client.py
+
 import json
 import aiohttp
 import logging
@@ -13,7 +15,15 @@ class AIClient:
         if self.session is None:
             self.session = aiohttp.ClientSession()
 
-    async def chat_with_model(self, user_id, new_message, conversation_manager, username=None, **kwargs):
+    async def chat_with_model(
+        self, 
+        user_id, 
+        new_message, 
+        conversation_manager, 
+        username=None, 
+        reroll=False, 
+        **kwargs
+    ):
         if self.session is None:
             await self.initialize()
 
@@ -24,6 +34,15 @@ class AIClient:
 
         params = DEFAULT_AI_PARAMS.copy()
         params.update(kwargs)
+
+        if reroll:
+            # Save current parameters before modifying
+            current_params = {k: v for k, v in params.items() if k in ['temperature', 'top_p']}
+            conversation_manager.save_reroll_parameters(user_id, current_params)
+
+            # Slightly adjust parameters to encourage a different response
+            params['temperature'] = min(params.get('temperature', 1.0) + 0.1, 1.0)  # Increase temperature for more randomness
+            params['top_p'] = min(params.get('top_p', 1.0) + 0.05, 1.0)  # Slightly increase top_p
 
         # Get user conversation history
         history = conversation_manager.get_conversation(user_id)
