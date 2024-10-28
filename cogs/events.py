@@ -101,7 +101,12 @@ class TemperatureView(View):
 
 class ReRollButton(Button):
     def __init__(self, user_id):
-        super().__init__(label="Re-roll", style=discord.ButtonStyle.primary)
+        super().__init__(
+            label="Re-roll", 
+            style=discord.ButtonStyle.secondary,
+            emoji="🎲",
+            custom_id=f"reroll_{user_id}"
+        )
         self.user_id = user_id
 
     async def callback(self, interaction: discord.Interaction):
@@ -123,8 +128,12 @@ class ReRollButton(Button):
 
 class ContinueButton(Button):
     def __init__(self, user_id):
-        # Change secondary to success for green color
-        super().__init__(label="Continue", style=discord.ButtonStyle.success)
+        super().__init__(
+            label="Continue", 
+            style=discord.ButtonStyle.success,
+            emoji="➡️",
+            custom_id=f"continue_{user_id}"
+        )
         self.user_id = user_id
 
     async def callback(self, interaction: discord.Interaction):
@@ -170,7 +179,12 @@ class ContinueButton(Button):
 
 class ClearHistoryButton(Button):
     def __init__(self, user_id):
-        super().__init__(label="Clear History", style=discord.ButtonStyle.danger)
+        super().__init__(
+            label="Clear", 
+            style=discord.ButtonStyle.secondary,
+            emoji="🗑️",
+            custom_id=f"clear_{user_id}"
+        )
         self.user_id = user_id
 
     async def callback(self, interaction: discord.Interaction):
