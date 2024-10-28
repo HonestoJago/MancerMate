@@ -82,6 +82,7 @@ class ReRollButton(Button):
             view = View()
             view.add_item(ReRollButton(user_id=user_id))
             view.add_item(ContinueButton(user_id=user_id))
+            view.add_item(ClearHistoryButton(user_id=user_id))
 
             new_ai_response_message = await channel.send(
                 new_response.encode('utf-8', errors='ignore').decode('utf-8'),
@@ -135,6 +136,7 @@ class ContinueButton(Button):
             view = View()
             view.add_item(ReRollButton(user_id=self.user_id))
             view.add_item(ContinueButton(user_id=self.user_id))
+            view.add_item(ClearHistoryButton(user_id=self.user_id))
             
             # Update conversation history with the continuation
             conversation_manager.update_last_response(self.user_id, last_response + "\n\n" + continuation)
@@ -144,6 +146,64 @@ class ContinueButton(Button):
                        extra={'user_id': self.user_id, 'command': 'continue_button'})
         else:
             await interaction.followup.send(continuation, ephemeral=True)
+
+class ClearHistoryButton(Button):
+    def __init__(self, user_id):
+        super().__init__(label="Clear History", style=discord.ButtonStyle.danger)
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
+
+        # Create confirmation view
+        view = ConfirmClearView(self.user_id)
+        await interaction.response.send_message(
+            "Are you sure you want to clear your conversation history?", 
+            view=view, 
+            ephemeral=True
+        )
+
+class ConfirmClearView(View):
+    def __init__(self, user_id):
+        super().__init__()
+        self.user_id = user_id
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
+
+        conversation_manager = interaction.client.conversation_manager
+        conversation_manager.clear_history(self.user_id)
+        
+        # Disable the buttons after use
+        for item in self.children:
+            item.disabled = True
+        
+        await interaction.response.edit_message(
+            content="Your conversation history has been cleared.", 
+            view=self
+        )
+        logger.info("Cleared conversation history via button.", 
+                   extra={'user_id': self.user_id, 'command': 'clear_history_button'})
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
+
+        # Disable the buttons after use
+        for item in self.children:
+            item.disabled = True
+        
+        await interaction.response.edit_message(
+            content="History clear cancelled.", 
+            view=self
+        )
 
 class BotEvents(commands.Cog):
     def __init__(self, bot):
@@ -195,6 +255,7 @@ class BotEvents(commands.Cog):
                     view = View()
                     view.add_item(ReRollButton(user_id=message.author.id))
                     view.add_item(ContinueButton(user_id=message.author.id))
+                    view.add_item(ClearHistoryButton(user_id=message.author.id))
 
                     # Send the AI response and save the message ID
                     ai_response_message = await message.reply(
