@@ -25,7 +25,7 @@ AVAILABLE_MODELS = {
 # Default AI parameters
 DEFAULT_AI_PARAMS = {
     "response_config": None,
-    "model": "magnum-72b-v4",
+    "model": "magnum-72b",
     "temperature": 1,
     "min_p": 0.1,
     "top_p": 1,
