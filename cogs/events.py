@@ -80,8 +80,8 @@ class ReRollButton(Button):
 
             # Send the new AI response with a new re-roll button
             view = View()
-            new_button = ReRollButton(user_id=user_id)
-            view.add_item(new_button)
+            view.add_item(ReRollButton(user_id=user_id))
+            view.add_item(ContinueButton(user_id=user_id))
 
             new_ai_response_message = await channel.send(
                 new_response.encode('utf-8', errors='ignore').decode('utf-8'),
@@ -101,6 +101,49 @@ class ReRollButton(Button):
         else:
             # If new_response is not a string, it's likely an error message
             await interaction.followup.send(new_response, ephemeral=True)
+
+class ContinueButton(Button):
+    def __init__(self, user_id):
+        super().__init__(label="Continue", style=discord.ButtonStyle.secondary)
+        self.user_id = user_id
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("You cannot use this button.", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+        
+        # Get last response
+        conversation_manager = interaction.client.conversation_manager
+        last_response = conversation_manager.get_last_response(self.user_id)
+        
+        if not last_response:
+            await interaction.followup.send("There's no previous response to continue from.", ephemeral=True)
+            return
+
+        # Generate continuation
+        continuation = await interaction.client.ai_client.chat_with_model(
+            self.user_id,
+            "Please continue from where you left off, but finish quickly.",
+            conversation_manager,
+            username=interaction.user.name
+        )
+
+        if isinstance(continuation, str):
+            # Create view with both buttons
+            view = View()
+            view.add_item(ReRollButton(user_id=self.user_id))
+            view.add_item(ContinueButton(user_id=self.user_id))
+            
+            # Update conversation history with the continuation
+            conversation_manager.update_last_response(self.user_id, last_response + "\n\n" + continuation)
+            
+            await interaction.followup.send(continuation, view=view)
+            logger.info("Continued response via button.", 
+                       extra={'user_id': self.user_id, 'command': 'continue_button'})
+        else:
+            await interaction.followup.send(continuation, ephemeral=True)
 
 class BotEvents(commands.Cog):
     def __init__(self, bot):
@@ -150,8 +193,8 @@ class BotEvents(commands.Cog):
 
                     # Create a view with the re-roll button
                     view = View()
-                    button = ReRollButton(user_id=message.author.id)
-                    view.add_item(button)
+                    view.add_item(ReRollButton(user_id=message.author.id))
+                    view.add_item(ContinueButton(user_id=message.author.id))
 
                     # Send the AI response and save the message ID
                     ai_response_message = await message.reply(
