@@ -22,14 +22,8 @@ class ReRollButton(Button):
         conversation_manager = interaction.client.conversation_manager
         user_id = self.user_id
 
-        # Check re-roll limits
-        reroll_count = conversation_manager.get_reroll_count(user_id)
-        if reroll_count >= 3:
-            await interaction.response.send_message("You have reached the maximum number of re-rolls for this interaction.", ephemeral=True)
-            return
-
-        # Increment re-roll counter
-        conversation_manager.increment_reroll(user_id)
+        # Remove reroll limit check and counter
+        conversation_manager.increment_reroll(user_id)  # Keep this just for logging purposes
 
         await interaction.response.defer()
 
@@ -173,5 +167,6 @@ class BotEvents(commands.Cog):
             error_msg = f"Error processing message: {str(e)}"
             logger.error(error_msg, extra={'user_id': message.author.id, 'command': 'on_message'})
             await message.channel.send(f"An error occurred while processing your message: {str(e)}")
+
 
 

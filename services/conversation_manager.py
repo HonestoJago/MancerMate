@@ -15,9 +15,9 @@ class ConversationManager:
         self.last_responses = {}
         self.original_messages = {}
         self.response_message_ids = {}
-        self.reroll_counters = defaultdict(int)
-        self.reroll_parameters = defaultdict(dict)  # To store parameter states prior to reroll
-        self.new_conversation_needed = defaultdict(bool)  # Add this line
+        self.reroll_counters = defaultdict(int)  # Keep for logging
+        self.reroll_parameters = defaultdict(dict)  # Keep for parameter management
+        self.new_conversation_needed = defaultdict(bool)
 
         # Load dialogue configuration
         self.config, self.ai_personality, self.example_dialogue = self.load_dialogue_from_json()
@@ -82,31 +82,31 @@ class ConversationManager:
     def increment_reroll(self, user_id):
         self.reroll_counters[user_id] += 1
 
-    def get_reroll_count(self, user_id):
-        return self.reroll_counters[user_id]
-
-    def reset_reroll_count(self, user_id):
-        self.reroll_counters[user_id] = 0
-
     def save_reroll_parameters(self, user_id, parameters):
         self.reroll_parameters[user_id] = parameters
-
-    def get_reroll_parameters(self, user_id):
-        return self.reroll_parameters.get(user_id, {})
 
     def reset_reroll_parameters(self, user_id):
         if user_id in self.reroll_parameters:
             original_params = self.reroll_parameters[user_id]
             for param, value in original_params.items():
                 if param in DEFAULT_AI_PARAMS:
-                    DEFAULT_AI_PARAMS[param] = value  # Assuming DEFAULT_AI_PARAMS is mutable
+                    DEFAULT_AI_PARAMS[param] = value
             del self.reroll_parameters[user_id]
 
     def update_last_response(self, user_id, new_response):
-        if self.conversations[user_id] and self.conversations[user_id][-1]['role'] == 'assistant':
-            self.conversations[user_id][-1]['content'] = new_response
+        history = self.conversations[user_id]
+        
+        # Find the last assistant message and update it
+        for i in reversed(range(len(history))):
+            if history[i]['role'] == 'assistant':
+                history[i]['content'] = new_response
+                break
         else:
-            self.conversations[user_id].append({"role": "assistant", "content": new_response})
+            # If no assistant message found, append new one
+            history.append({"role": "assistant", "content": new_response})
+        
+        # Update the last_responses cache
+        self.last_responses[user_id] = new_response
 
     @staticmethod
     def estimate_tokens(message: str) -> int:

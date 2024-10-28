@@ -41,7 +41,7 @@ class AIClient:
             conversation_manager.save_reroll_parameters(user_id, current_params)
 
             # Slightly adjust parameters to encourage a different response
-            params['temperature'] = min(params.get('temperature', 1.0) + 0.1, 1.0)  # Increase temperature for more randomness
+            params['temperature'] = params.get('temperature', 1.0) + 0.1  # Increase temperature without cap
             params['top_p'] = min(params.get('top_p', 1.0) + 0.05, 1.0)  # Slightly increase top_p
 
         # Get user conversation history
@@ -58,9 +58,15 @@ class AIClient:
             if conversation_manager.should_load_example_dialogue():
                 history.extend(conversation_manager.get_example_dialogue())
 
-        # Add user message with username if available
-        user_message = f"{username}: {new_message}" if username else new_message
-        history.append({"role": "user", "content": user_message})
+        if reroll:
+            # For rerolls, we want to keep everything up to the last user message
+            # Remove the last assistant response if it exists
+            if history and history[-1]['role'] == 'assistant':
+                history.pop()
+        else:
+            # For new messages, add the user message
+            user_message = f"{username}: {new_message}" if username else new_message
+            history.append({"role": "user", "content": user_message})
 
         # Manage token context limit
         conversation_manager.manage_conversation_length(user_id)
@@ -83,9 +89,6 @@ class AIClient:
                     if not ai_response or not ai_response.strip():
                         logger.error("API returned empty content", extra={'user_id': user_id, 'command': 'chat_with_model'})
                         return "The AI model returned an empty response. Please try again."
-                    
-                    # Add assistant's response to history
-                    history.append({"role": "assistant", "content": ai_response})
                     
                     # Save conversation and update last response
                     conversation_manager.save_conversation_log(user_id)

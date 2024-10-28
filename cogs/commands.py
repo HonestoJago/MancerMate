@@ -7,7 +7,8 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ui import Button, View
 import logging
-from config.settings import TEXTGEN_DIR, DEFAULT_AI_PARAMS, AVAILABLE_MODELS
+from config.settings import CHAT_LOGS_DIR, TEXTGEN_DIR, DEFAULT_AI_PARAMS, AVAILABLE_MODELS
+import datetime
 
 logger = logging.getLogger('discord')
 
@@ -131,4 +132,53 @@ class BotCommands(commands.Cog):
         else:
             await interaction.response.send_message("There's no previous response to continue from.", ephemeral=True)
 
+    @app_commands.command(name="show_history", description="Show your conversation history")
+    @app_commands.describe(
+        save="Also save the history to a file",
+        public="Make the response visible to everyone"
+    )
+    @is_in_allowed_channel()
+    async def slash_show_history(self, interaction: discord.Interaction, save: bool = False, public: bool = False):
+        try:
+            await interaction.response.defer(ephemeral=not public)
+            user_id = interaction.user.id
+            history = self.bot.conversation_manager.get_conversation(user_id)
+            
+            if not history:
+                await interaction.followup.send("No conversation history found.", ephemeral=not public)
+                return
 
+            # Format the history for display
+            formatted_history = "**Conversation History:**\n```json\n"
+            for msg in history:
+                role = msg['role']
+                content = msg['content'][:100] + "..." if len(msg['content']) > 100 else msg['content']
+                formatted_history += f"{role}: {content}\n"
+            formatted_history += "```"
+
+            # Save to file if requested
+            if save:
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"history_{user_id}_{timestamp}.json"
+                file_path = os.path.join(CHAT_LOGS_DIR, filename)
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(history, f, indent=2, ensure_ascii=False)
+                
+                # Create Discord file attachment
+                discord_file = discord.File(file_path, filename=filename)
+                await interaction.followup.send(
+                    content=f"{formatted_history}\n\nFull history saved to file:",
+                    file=discord_file,
+                    ephemeral=not public
+                )
+            else:
+                await interaction.followup.send(formatted_history, ephemeral=not public)
+
+            logger.info("Displayed conversation history", 
+                       extra={'user_id': user_id, 'command': 'show_history'})
+
+        except Exception as e:
+            error_message = f"An error occurred while showing history: {str(e)}"
+            logger.error(error_message, extra={'user_id': interaction.user.id, 'command': 'show_history'})
+            await interaction.followup.send(error_message, ephemeral=True)
