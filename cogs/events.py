@@ -2,10 +2,102 @@
 
 import discord
 from discord.ext import commands
-from discord.ui import View, Button
+from discord.ui import View, Button, Select
 import logging
 
 logger = logging.getLogger('discord')
+
+class TemperatureSelect(Select):
+    def __init__(self, user_id, original_message):
+        options = [
+            discord.SelectOption(
+                label="Low Creativity (0.7)",
+                description="More focused and deterministic responses",
+                value="0.7"
+            ),
+            discord.SelectOption(
+                label="Medium Creativity (1.0)",
+                description="Balanced responses",
+                value="1.0"
+            ),
+            discord.SelectOption(
+                label="High Creativity (1.3)",
+                description="More varied and creative responses",
+                value="1.3"
+            ),
+            discord.SelectOption(
+                label="Maximum Creativity (1.5)",
+                description="Most unpredictable responses",
+                value="1.5"
+            )
+        ]
+        super().__init__(
+            placeholder="Select temperature for this reroll...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+        self.user_id = user_id
+        self.original_message = original_message
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("You cannot use this control.", ephemeral=True)
+            return
+
+        temperature = float(self.values[0])
+        await interaction.response.defer()
+
+        # Get necessary managers
+        conversation_manager = interaction.client.conversation_manager
+        response_message_id = conversation_manager.get_response_message_id(self.user_id)
+
+        # Get the channel and message to be replaced
+        channel = interaction.channel
+        try:
+            ai_message = await channel.fetch_message(response_message_id)
+        except discord.NotFound:
+            await interaction.followup.send("Original message not found.", ephemeral=True)
+            return
+
+        # Show typing indicator while generating response
+        async with channel.typing():
+            # Generate new response with custom temperature
+            ai_client = interaction.client.ai_client
+            new_response = await ai_client.chat_with_model(
+                self.user_id,
+                self.original_message,
+                conversation_manager,
+                username=interaction.user.name,
+                reroll=True,
+                temperature=temperature
+            )
+
+        if isinstance(new_response, str):
+            # Delete old message and send new one
+            await ai_message.delete()
+            
+            view = View()
+            view.add_item(ReRollButton(user_id=self.user_id))
+            view.add_item(ContinueButton(user_id=self.user_id))
+            view.add_item(ClearHistoryButton(user_id=self.user_id))
+
+            new_message = await channel.send(
+                new_response.encode('utf-8', errors='ignore').decode('utf-8'),
+                view=view
+            )
+            conversation_manager.save_response_message_id(self.user_id, new_message.id)
+            conversation_manager.update_last_response(self.user_id, new_response)
+
+            await interaction.followup.send(
+                f"Response re-rolled with temperature {temperature}",
+                ephemeral=True
+            )
+
+class TemperatureView(View):
+    def __init__(self, user_id, original_message):
+        super().__init__()
+        self.add_item(TemperatureSelect(user_id, original_message))
 
 class ReRollButton(Button):
     def __init__(self, user_id):
@@ -13,88 +105,21 @@ class ReRollButton(Button):
         self.user_id = user_id
 
     async def callback(self, interaction: discord.Interaction):
-        # Ensure only the original user can click the button
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("You cannot use this button.", ephemeral=True)
             return
 
-        # Access the ConversationManager via interaction.client
+        # Get the original message
         conversation_manager = interaction.client.conversation_manager
-        user_id = self.user_id
+        original_message = conversation_manager.get_original_message(self.user_id)
 
-        # Get the original message and response message ID
-        original_message = conversation_manager.get_original_message(user_id)
-        response_message_id = conversation_manager.get_response_message_id(user_id)
-
-        # Remove reroll limit check and counter
-        conversation_manager.increment_reroll(user_id)  # Keep this just for logging purposes
-
-        await interaction.response.defer()
-
-        # Get the channel from the interaction
-        channel = interaction.channel
-
-        # Fetch the message to be deleted
-        try:
-            ai_message = await channel.fetch_message(response_message_id)
-        except discord.NotFound:
-            await interaction.followup.send("Original AI response message not found or has been deleted.", ephemeral=True)
-            return
-        except discord.Forbidden:
-            await interaction.followup.send("I don't have permission to fetch the original AI response.", ephemeral=True)
-            return
-
-        # Add typing indicator
-        async with channel.typing():
-            # Generate a new response using the original message
-            ai_client = interaction.client.ai_client
-            new_response = await ai_client.chat_with_model(
-                user_id,
-                original_message,
-                conversation_manager,
-                username=interaction.user.name,
-                reroll=True
-            )
-
-        if isinstance(new_response, str):
-            # Truncate if necessary
-            if len(new_response) > 1900:
-                new_response = new_response[:1900] + "..."
-
-            # Delete the original AI message
-            try:
-                await ai_message.delete()
-            except discord.Forbidden:
-                await interaction.followup.send("I don't have permission to delete the original AI response.", ephemeral=True)
-                return
-            except discord.HTTPException:
-                await interaction.followup.send("Failed to delete the original AI response message.", ephemeral=True)
-                return
-
-            # Send the new AI response with a new re-roll button
-            view = View()
-            view.add_item(ReRollButton(user_id=user_id))
-            view.add_item(ContinueButton(user_id=user_id))
-            view.add_item(ClearHistoryButton(user_id=user_id))
-
-            new_ai_response_message = await channel.send(
-                new_response.encode('utf-8', errors='ignore').decode('utf-8'),
-                view=view
-            )
-            conversation_manager.save_response_message_id(user_id, new_ai_response_message.id)
-
-            # Update conversation history with the new response
-            conversation_manager.update_last_response(user_id, new_response)
-
-            # Reset parameters to their previous state
-            conversation_manager.reset_reroll_parameters(user_id)
-
-            # Inform the user
-            await interaction.followup.send("Your response has been re-rolled.", ephemeral=True)
-            logger.info("Re-rolled response.", extra={'user_id': user_id, 'command': 'reroll'})
-        else:
-            # If new_response is not a string, it's likely an error message
-            await interaction.followup.send(new_response, ephemeral=True)
+        # Show temperature selector
+        view = TemperatureView(self.user_id, original_message)
+        await interaction.response.send_message(
+            "Choose the creativity level for this reroll:",
+            view=view,
+            ephemeral=True
+        )
 
 class ContinueButton(Button):
     def __init__(self, user_id):
