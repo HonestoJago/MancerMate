@@ -32,7 +32,8 @@ class AIClient:
             "Authorization": f"Bearer {API_KEY}"
         }
 
-        params = DEFAULT_AI_PARAMS.copy()
+        # Get user-specific parameters
+        params = conversation_manager.get_user_params(user_id).copy()
         params.update(kwargs)
 
         if reroll:
@@ -40,9 +41,9 @@ class AIClient:
             current_params = {k: v for k, v in params.items() if k in ['temperature', 'top_p']}
             conversation_manager.save_reroll_parameters(user_id, current_params)
 
-            # Slightly adjust parameters to encourage a different response
-            params['temperature'] = params.get('temperature', 1.0) + 0.1  # Increase temperature without cap
-            params['top_p'] = min(params.get('top_p', 1.0) + 0.05, 1.0)  # Slightly increase top_p
+            # Adjust parameters for this user only
+            params['temperature'] = params.get('temperature', 1.0) + 0.1
+            params['top_p'] = min(params.get('top_p', 1.0) + 0.05, 1.0)
 
         # Get user conversation history
         history = conversation_manager.get_conversation(user_id)

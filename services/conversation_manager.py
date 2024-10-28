@@ -16,8 +16,8 @@ class ConversationManager:
         self.original_messages = {}
         self.response_message_ids = {}
         self.reroll_counters = defaultdict(int)  # Keep for logging
-        self.reroll_parameters = defaultdict(dict)  # Keep for parameter management
-        self.new_conversation_needed = defaultdict(bool)
+        self.user_params = defaultdict(lambda: DEFAULT_AI_PARAMS.copy())
+        self.reroll_parameters = defaultdict(dict)
 
         # Load dialogue configuration
         self.config, self.ai_personality, self.example_dialogue = self.load_dialogue_from_json()
@@ -83,14 +83,13 @@ class ConversationManager:
         self.reroll_counters[user_id] += 1
 
     def save_reroll_parameters(self, user_id, parameters):
-        self.reroll_parameters[user_id] = parameters
+        self.reroll_parameters[user_id] = parameters.copy()
 
     def reset_reroll_parameters(self, user_id):
         if user_id in self.reroll_parameters:
             original_params = self.reroll_parameters[user_id]
-            for param, value in original_params.items():
-                if param in DEFAULT_AI_PARAMS:
-                    DEFAULT_AI_PARAMS[param] = value
+            # Update user-specific parameters instead of global
+            self.user_params[user_id].update(original_params)
             del self.reroll_parameters[user_id]
 
     def update_last_response(self, user_id, new_response):
@@ -147,7 +146,6 @@ class ConversationManager:
 
     def clear_history(self, user_id):
         self.conversations[user_id] = []
-        self.new_conversation_needed[user_id] = True
         if user_id in self.last_responses:
             del self.last_responses[user_id]
         if user_id in self.original_messages:
@@ -158,3 +156,6 @@ class ConversationManager:
             del self.reroll_counters[user_id]
         if user_id in self.reroll_parameters:
             del self.reroll_parameters[user_id]
+
+    def get_user_params(self, user_id):
+        return self.user_params[user_id]
