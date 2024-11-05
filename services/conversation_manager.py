@@ -145,6 +145,7 @@ class ConversationManager:
                         extra={'user_id': user_id, 'command': 'save_conversation_log'})
 
     def clear_history(self, user_id):
+        # Clear all user-specific data
         self.conversations[user_id] = []
         if user_id in self.last_responses:
             del self.last_responses[user_id]
@@ -156,6 +157,14 @@ class ConversationManager:
             del self.reroll_counters[user_id]
         if user_id in self.reroll_parameters:
             del self.reroll_parameters[user_id]
+        
+        # Reinitialize the conversation with system message
+        system_message = {"role": "system", "content": self.ai_personality}
+        self.conversations[user_id].append(system_message)
+        
+        # Add example dialogue if enabled
+        if self.should_load_example_dialogue():
+            self.conversations[user_id].extend(self.example_dialogue)
 
     def get_user_params(self, user_id):
         return self.user_params[user_id]
