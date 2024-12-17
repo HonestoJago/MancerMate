@@ -263,19 +263,21 @@ class BotEvents(commands.Cog):
             is_dm = isinstance(message.channel, discord.DMChannel)
 
             if is_mentioned or is_reply_to_bot or is_dm:
-                # Process mentions in the message
+                # Process mentions in the message, using actual usernames (not display names)
                 processed_content = message.content
                 mentioned_users = []
                 for mention in message.mentions:
+                    # Replace mention tags with actual usernames
                     processed_content = processed_content.replace(f'<@{mention.id}>', f'@{mention.name}')
                     mentioned_users.append(mention.name)
 
                 async with message.channel.typing():
+                    # Use the actual username (not display name) for the message author
                     response = await self.bot.ai_client.chat_with_model(
                         message.author.id,
                         processed_content,
                         self.bot.conversation_manager,
-                        username=message.author.name
+                        username=message.author.name  # Explicitly using actual username
                     )
 
                 if isinstance(response, str):

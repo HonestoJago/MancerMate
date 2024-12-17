@@ -116,7 +116,7 @@ class BotCommands(commands.Cog):
                 user_id, 
                 continuation_prompt, 
                 self.bot.conversation_manager,
-                username=interaction.user.name
+                username=interaction.user.name,
             )
             
             if isinstance(continuation, str):

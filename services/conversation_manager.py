@@ -95,7 +95,7 @@ class ConversationManager:
     def update_last_response(self, user_id, new_response):
         history = self.conversations[user_id]
         
-        # Find the last assistant message and update it
+        # Find and update the last assistant message
         for i in reversed(range(len(history))):
             if history[i]['role'] == 'assistant':
                 history[i]['content'] = new_response
@@ -145,8 +145,22 @@ class ConversationManager:
                         extra={'user_id': user_id, 'command': 'save_conversation_log'})
 
     def clear_history(self, user_id):
-        # Clear all user-specific data
-        self.conversations[user_id] = []
+        """Clear user's conversation history while maintaining structure"""
+        # Create a new conversation list with just the system message
+        new_history = []
+        
+        # Add system message
+        system_message = {"role": "system", "content": self.ai_personality}
+        new_history.append(system_message)
+        
+        # Add example dialogue if enabled
+        if self.should_load_example_dialogue():
+            new_history.extend(self.example_dialogue)
+        
+        # Set the new conversation
+        self.conversations[user_id] = new_history
+        
+        # Clear other user-specific data
         if user_id in self.last_responses:
             del self.last_responses[user_id]
         if user_id in self.original_messages:
@@ -157,14 +171,10 @@ class ConversationManager:
             del self.reroll_counters[user_id]
         if user_id in self.reroll_parameters:
             del self.reroll_parameters[user_id]
-        
-        # Reinitialize the conversation with system message
-        system_message = {"role": "system", "content": self.ai_personality}
-        self.conversations[user_id].append(system_message)
-        
-        # Add example dialogue if enabled
-        if self.should_load_example_dialogue():
-            self.conversations[user_id].extend(self.example_dialogue)
 
     def get_user_params(self, user_id):
         return self.user_params[user_id]
+
+    def set_conversation(self, user_id, history):
+        """Set the full conversation history for a user"""
+        self.conversations[user_id] = history

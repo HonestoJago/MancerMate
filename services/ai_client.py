@@ -52,7 +52,7 @@ class AIClient:
             # Add system message for personality
             system_message = conversation_manager.get_ai_personality()
             if username:
-                system_message += f"\nYou are talking to a Discord user named {username}."
+                system_message += f"\nYou are talking to Discord user '{username}'."
             history.append({"role": "system", "content": system_message})
 
             # Load pre-loaded conversation if enabled
@@ -65,7 +65,7 @@ class AIClient:
             if history and history[-1]['role'] == 'assistant':
                 history.pop()
         else:
-            # For new messages, add the user message
+            # For new messages, add the user message with actual username
             user_message = f"{username}: {new_message}" if username else new_message
             history.append({"role": "user", "content": user_message})
 
@@ -86,10 +86,99 @@ class AIClient:
                         logger.error("API returned no choices", extra={'user_id': user_id, 'command': 'chat_with_model'})
                         return "The AI model returned an empty response. Please try again."
                     
-                    ai_response = response_json["choices"][0]["message"]["content"]
-                    if not ai_response or not ai_response.strip():
+                    ai_response = response_json["choices"][0]["message"]["content"].strip()
+                    finish_reason = response_json["choices"][0].get("finish_reason")
+                    
+                    if not ai_response:
                         logger.error("API returned empty content", extra={'user_id': user_id, 'command': 'chat_with_model'})
                         return "The AI model returned an empty response. Please try again."
+                    
+                    # Process response if it didn't finish naturally
+                    if finish_reason != "stop":
+                        # Common abbreviations that don't end sentences
+                        abbreviations = {
+                            'mr.', 'mrs.', 'ms.', 'dr.', 'prof.', 'sr.', 'jr.',
+                            'vs.', 'etc.', 'e.g.', 'i.e.',
+                            'inc.', 'ltd.', 'corp.', 'llc.', 'co.'
+                        }
+                        
+                        # Split into sentences more carefully
+                        sentences = []
+                        last_end = 0
+                        
+                        for i, char in enumerate(ai_response):
+                            if char in '.!?':
+                                # Get the word ending at this period
+                                word_start = max(0, ai_response.rfind(' ', 0, i) + 1)
+                                word_with_period = ai_response[word_start:i+1].lower()
+                                
+                                is_sentence_end = True
+                                
+                                # Skip abbreviations
+                                if word_with_period in abbreviations:
+                                    is_sentence_end = False
+                                
+                                # Skip numbers (e.g. "3.14")
+                                elif i > 0 and i < len(ai_response) - 1:
+                                    if ai_response[i-1].isdigit() and ai_response[i+1].isdigit():
+                                        is_sentence_end = False
+                                
+                                # Skip if no space after (unless it's the end)
+                                elif i < len(ai_response) - 1 and not ai_response[i+1].isspace():
+                                    is_sentence_end = False
+                                
+                                if is_sentence_end:
+                                    sentence = ai_response[last_end:i+1].strip()
+                                    if sentence:
+                                        sentences.append(sentence)
+                                        last_end = i + 1
+                        
+                        # Add remaining text if any
+                        remaining = ai_response[last_end:].strip()
+                        if remaining:
+                            sentences.append(remaining)
+                        
+                        # Check for incomplete endings
+                        incomplete_endings = [
+                            'and', 'but', 'or', 'nor', 'for', 'yet', 'so',
+                            'with', 'to', 'in', 'at', 'by',
+                            ',', ', and', ', or'
+                        ]
+                        
+                        # If we have sentences, process them
+                        if sentences:
+                            ai_response = ' '.join(sentences)
+                            last_words = ai_response.rstrip().lower().split()
+                            
+                            ends_with_incomplete = (
+                                not any(ai_response.rstrip().endswith(char) for char in '.!?') or
+                                (last_words and any(last_words[-1].endswith(ending) for ending in incomplete_endings))
+                            )
+                            
+                            # Handle malformed punctuation
+                            if '.' in ai_response and not ai_response.endswith('.'):
+                                last_period = ai_response.rindex('.')
+                                if last_period > len(ai_response) * 0.75:
+                                    ai_response = ai_response[:last_period + 1]
+                            
+                            if ends_with_incomplete:
+                                # Find the last complete sentence
+                                last_complete = -1
+                                for i, char in enumerate(ai_response):
+                                    if char in '.!?':
+                                        text_after = ai_response[i+1:].strip()
+                                        words_after = text_after.lower().split()
+                                        if not words_after or words_after[0] not in incomplete_endings:
+                                            last_complete = i
+                                
+                                if last_complete != -1:
+                                    ai_response = ai_response[:last_complete + 1].strip()
+                
+                    # Add the AI's response to the conversation history
+                    history.append({"role": "assistant", "content": ai_response})
+                    
+                    # Update the conversation in the manager before saving
+                    conversation_manager.set_conversation(user_id, history)
                     
                     # Save conversation and update last response
                     conversation_manager.save_conversation_log(user_id)
